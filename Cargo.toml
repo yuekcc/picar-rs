@@ -1,0 +1,8 @@
+[package]
+name = "picar-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+kamadak-exif = "0.5.4"
+anyhow = "1.0.51"
