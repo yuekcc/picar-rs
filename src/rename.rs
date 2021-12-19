@@ -1,4 +1,5 @@
 use anyhow::Result;
+use futures::future;
 use std::path::{Path, PathBuf};
 
 fn read_dir(dir: &Path) -> Vec<PathBuf> {
@@ -31,20 +32,32 @@ fn get_datetime_from_file(file_name: &Path) -> Result<Vec<String>> {
     Ok(date_time_fields)
 }
 
-pub fn parse_dir(dir_name: &str) -> Result<()> {
-    let dir = Path::new(dir_name);
-    let image_files = read_dir(dir);
+async fn parse_file(file_path: PathBuf) -> Result<()> {
+    let datetime_list = get_datetime_from_file(file_path.as_path());
 
-    image_files.into_iter().for_each(|file_path| {
-        let datetime_list = get_datetime_from_file(file_path.as_path());
-        println!(
-            "File: {}, Date Time Data from exif: {:?}",
-            file_path.display(),
-            datetime_list
-        )
-    });
+    match datetime_list {
+        Ok(list) => {
+            println!(
+                "\t处理文件：{}；获取拍照时间：{}",
+                file_path.display(),
+                list[0]
+            );
+        }
+        Err(err) => {
+            println!("\t处理文件：{}；出错！{}", file_path.display(), err);
+        }
+    };
 
     Ok(())
+}
+
+pub async fn parse_dir(dir_name: &str) {
+    let dir = Path::new(dir_name);
+    println!("整理目录：{} 里文件：", dir.display());
+
+    let jobs = read_dir(dir).into_iter().map(parse_file);
+
+    future::join_all(jobs).await;
 }
 
 #[cfg(test)]
