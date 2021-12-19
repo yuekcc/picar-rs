@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-kamadak-exif = "0.5"
 anyhow = "1.0"
 async-std = {version = "1.10", features = ["attributes"]}
+chrono = "0.4"
 futures = "0.3"
+kamadak-exif = "0.5"

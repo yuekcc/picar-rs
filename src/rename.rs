@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::NaiveDateTime;
 use futures::future;
 use std::path::{Path, PathBuf};
 
@@ -30,6 +31,24 @@ fn get_datetime_from_file(file_name: &Path) -> Result<Vec<String>> {
         .collect();
 
     Ok(date_time_fields)
+}
+
+fn gen_new_file_path(file_path: &Path, dt: &NaiveDateTime) -> Result<PathBuf> {
+    let file_name = file_path
+        .file_name()
+        .expect("无法获取文件名")
+        .to_str()
+        .unwrap();
+    let basedir = file_path.parent().unwrap().display().to_string();
+
+    let archive_dir = dt.format("%Y%m").to_string();
+
+    let mut new_path = PathBuf::new();
+    new_path.push(basedir);
+    new_path.push(archive_dir);
+    new_path.push(file_name);
+
+    Ok(new_path)
 }
 
 async fn parse_file(file_path: PathBuf) -> Result<()> {
@@ -64,7 +83,9 @@ pub async fn parse_dir(dir_name: &str) {
 mod test {
     use std::path::Path;
 
-    use super::{get_datetime_from_file, read_dir, read_exif};
+    use chrono::NaiveDateTime;
+
+    use super::{gen_new_file_path, get_datetime_from_file, read_dir, read_exif};
 
     #[test]
     fn 获取_exif_数据() {
@@ -93,6 +114,28 @@ mod test {
         assert!(!_date_time_fields.is_empty());
 
         // println!("date_time_fields is {:?}", _date_time_fields);
+    }
+
+    #[test]
+    fn 从时间日期数据创建新的文件名() {
+        let file_path = Path::new("testdata/1.jpg");
+        // let date_time_fields = get_datetime_from_file(file_path);
+
+        // let datetime_str = &date_time_fields.unwrap()[0];
+        // println!("datetime_str: '{}'", datetime_str);
+
+        let dt = NaiveDateTime::parse_from_str("2015-11-16 20:07:54", "%Y-%m-%d %H:%M:%S");
+        println!("dt: {:?}", dt);
+        assert!(dt.is_ok());
+
+        let new_path = gen_new_file_path(file_path, &dt.unwrap());
+        assert!(new_path.is_ok());
+
+        let _new_path = new_path.unwrap();
+        let __new_path = _new_path.as_path();
+
+        println!("new_path: {:?}", __new_path);
+        assert_eq!(__new_path, Path::new("testdata/201511/1.jpg"));
     }
 
     #[test]
