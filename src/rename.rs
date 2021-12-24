@@ -1,7 +1,10 @@
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use futures::future;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 fn read_dir(dir: &Path) -> Vec<PathBuf> {
     let entries = dir.read_dir().expect("not a directory");
@@ -61,6 +64,13 @@ async fn parse_file(file_path: PathBuf) -> Result<()> {
                 file_path.display(),
                 list[0]
             );
+
+            let dt = NaiveDateTime::parse_from_str(&list[0], "%Y-%m-%d %H:%M:%S");
+            let new_path = gen_new_file_path(file_path.as_path(), &dt.unwrap()).unwrap();
+
+            new_path.parent().map(fs::create_dir_all);
+
+            fs::rename(file_path, new_path).expect("无法移动文件");
         }
         Err(err) => {
             println!("\t处理文件：{}；出错！{}", file_path.display(), err);
