@@ -24,19 +24,19 @@ fn read_exif(file_name: &Path) -> Result<exif::Exif> {
     Ok(metadata)
 }
 
-fn get_datetime_from_file(file_name: &Path) -> Result<Vec<String>> {
+fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
     let exif_data = read_exif(file_name)?;
 
-    let date_time_fields = exif_data
+    let datetime_fields = exif_data
         .fields()
         .filter(|it| it.tag.to_string().to_lowercase().contains("datetime"))
         .map(|it| it.display_value().to_string())
         .collect();
 
-    Ok(date_time_fields)
+    Ok(datetime_fields)
 }
 
-fn gen_new_file_path(file_path: &Path, dt: &NaiveDateTime) -> Result<PathBuf> {
+fn gen_new_path(file_path: &Path, dt: &NaiveDateTime) -> Result<PathBuf> {
     let file_name = file_path
         .file_name()
         .expect("无法获取文件名")
@@ -55,7 +55,7 @@ fn gen_new_file_path(file_path: &Path, dt: &NaiveDateTime) -> Result<PathBuf> {
 }
 
 async fn parse_file(file_path: PathBuf) -> Result<()> {
-    let datetime_list = get_datetime_from_file(file_path.as_path());
+    let datetime_list = read_datetime(file_path.as_path());
 
     match datetime_list {
         Ok(list) => {
@@ -66,7 +66,7 @@ async fn parse_file(file_path: PathBuf) -> Result<()> {
             );
 
             let dt = NaiveDateTime::parse_from_str(&list[0], "%Y-%m-%d %H:%M:%S");
-            let new_path = gen_new_file_path(file_path.as_path(), &dt.unwrap()).unwrap();
+            let new_path = gen_new_path(file_path.as_path(), &dt.unwrap()).unwrap();
 
             new_path.parent().map(fs::create_dir_all);
 
@@ -95,7 +95,7 @@ mod test {
 
     use chrono::NaiveDateTime;
 
-    use super::{gen_new_file_path, get_datetime_from_file, read_dir, read_exif};
+    use super::{gen_new_path, read_datetime, read_dir, read_exif};
 
     #[test]
     fn 获取_exif_数据() {
@@ -116,7 +116,7 @@ mod test {
     #[test]
     fn 从文件中获取时间日期数据() {
         let file_path = Path::new("testdata/1.jpg");
-        let date_time_fields = get_datetime_from_file(file_path);
+        let date_time_fields = read_datetime(file_path);
 
         assert!(date_time_fields.is_ok());
 
@@ -138,7 +138,7 @@ mod test {
         println!("dt: {:?}", dt);
         assert!(dt.is_ok());
 
-        let new_path = gen_new_file_path(file_path, &dt.unwrap());
+        let new_path = gen_new_path(file_path, &dt.unwrap());
         assert!(new_path.is_ok());
 
         let _new_path = new_path.unwrap();
