@@ -80,8 +80,7 @@ async fn parse_file(file_path: PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub async fn parse_dir(dir_name: &str) {
-    let dir = Path::new(dir_name);
+pub async fn parse_dir(dir: &Path) {
     println!("整理目录：{} 里文件：", dir.display());
 
     let jobs = read_dir(dir).into_iter().map(parse_file);

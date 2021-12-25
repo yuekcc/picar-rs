@@ -9,3 +9,4 @@ async-std = {version = "1.10", features = ["attributes"]}
 chrono = "0.4"
 futures = "0.3"
 kamadak-exif = "0.5"
+structopt = "0.3.25"
