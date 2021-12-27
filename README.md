@@ -15,7 +15,7 @@ IMG_20151106_212111.jpg => 201511/PREFIX_20150401_111111.jpg
 - [x] 支持命令行参数
     - [x] `--rename-only`
     - [ ] `--prefix`
-    - [ ]`-videos`
+    - [ ] `-videos`
 - [ ] 打包脚本
 
 ## LICENSE
