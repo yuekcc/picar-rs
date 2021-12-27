@@ -6,6 +6,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::opt::Opt;
+
 fn read_dir(dir: &Path) -> Vec<PathBuf> {
     let entries = dir.read_dir().expect("not a directory");
     entries
@@ -36,7 +38,11 @@ fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
     Ok(datetime_fields)
 }
 
-fn gen_new_path(file_path: &Path, dt: &NaiveDateTime) -> Result<PathBuf> {
+fn gen_new_path(
+    file_path: &Path,
+    dt: &NaiveDateTime,
+    rename_only: bool,
+) -> Result<PathBuf> {
     let file_name = file_path
         .file_name()
         .expect("无法获取文件名")
@@ -44,17 +50,20 @@ fn gen_new_path(file_path: &Path, dt: &NaiveDateTime) -> Result<PathBuf> {
         .unwrap();
     let basedir = file_path.parent().unwrap().display().to_string();
 
-    let archive_dir = dt.format("%Y%m").to_string();
-
     let mut new_path = PathBuf::new();
     new_path.push(basedir);
-    new_path.push(archive_dir);
+
+    if !rename_only {
+        let archive_dir = dt.format("%Y%m").to_string();
+        new_path.push(archive_dir);
+    }
+
     new_path.push(file_name);
 
     Ok(new_path)
 }
 
-async fn parse_file(file_path: PathBuf) -> Result<()> {
+async fn parse_file(file_path: PathBuf, opt: &Opt) -> Result<()> {
     let datetime_list = read_datetime(file_path.as_path());
 
     match datetime_list {
@@ -65,8 +74,10 @@ async fn parse_file(file_path: PathBuf) -> Result<()> {
                 list[0]
             );
 
-            let dt = NaiveDateTime::parse_from_str(&list[0], "%Y-%m-%d %H:%M:%S");
-            let new_path = gen_new_path(file_path.as_path(), &dt.unwrap()).unwrap();
+            let dt =
+                NaiveDateTime::parse_from_str(&list[0], "%Y-%m-%d %H:%M:%S")?;
+            let new_path =
+                gen_new_path(file_path.as_path(), &dt, opt.rename_only)?;
 
             new_path.parent().map(fs::create_dir_all);
 
@@ -80,12 +91,12 @@ async fn parse_file(file_path: PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub async fn parse_dir(dir: &Path) {
+pub async fn parse_dir(dir: &Path, opt: &Opt) {
     println!("整理目录：{} 里文件：", dir.display());
 
-    let jobs = read_dir(dir).into_iter().map(parse_file);
+    let renames = read_dir(dir).into_iter().map(|it| parse_file(it, opt));
 
-    future::join_all(jobs).await;
+    future::join_all(renames).await;
 }
 
 #[cfg(test)]
@@ -133,11 +144,14 @@ mod test {
         // let datetime_str = &date_time_fields.unwrap()[0];
         // println!("datetime_str: '{}'", datetime_str);
 
-        let dt = NaiveDateTime::parse_from_str("2015-11-16 20:07:54", "%Y-%m-%d %H:%M:%S");
+        let dt = NaiveDateTime::parse_from_str(
+            "2015-11-16 20:07:54",
+            "%Y-%m-%d %H:%M:%S",
+        );
         println!("dt: {:?}", dt);
         assert!(dt.is_ok());
 
-        let new_path = gen_new_path(file_path, &dt.unwrap());
+        let new_path = gen_new_path(file_path, &dt.unwrap(), false);
         assert!(new_path.is_ok());
 
         let _new_path = new_path.unwrap();
