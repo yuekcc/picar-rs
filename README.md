@@ -14,9 +14,18 @@ IMG_20151106_212111.jpg => 201511/PREFIX_20150401_111111.jpg
 - [x] 按照 Exif 数据记录的时间日期，重命名文件
 - [x] 支持命令行参数
     - [x] `--rename-only`
-    - [ ] `--prefix`
+    - [x] `--prefix`
     - [ ] `-videos`
-- [ ] 打包脚本
+- [x] 打包脚本
+
+## 构建
+
+```shell
+$ cargo build --release
+$
+$ # 如果安装了 just，可以直接执行
+$ just release
+```
 
 ## LICENSE
 
