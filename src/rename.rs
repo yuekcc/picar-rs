@@ -38,29 +38,33 @@ fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
     Ok(datetime_fields)
 }
 
-fn gen_new_path(
-    file_path: &Path,
-    dt: &NaiveDateTime,
-    rename_only: bool,
-) -> Result<PathBuf> {
-    let file_name = file_path
-        .file_name()
-        .expect("无法获取文件名")
+fn gen_new_path(file_path: &Path, dt: &NaiveDateTime, opt: &Opt) -> Result<PathBuf> {
+    let ext = file_path
+        .extension()
+        .expect("不支持空白拓展名")
         .to_str()
         .unwrap();
-    let basedir = file_path.parent().unwrap().display().to_string();
 
-    let mut new_path = PathBuf::new();
-    new_path.push(basedir);
+    let basedir = file_path.parent().unwrap();
 
-    if !rename_only {
+    let mut result = PathBuf::new();
+    result.push(basedir);
+
+    if !opt.rename_only {
         let archive_dir = dt.format("%Y%m").to_string();
-        new_path.push(archive_dir);
+        result.push(archive_dir);
     }
 
-    new_path.push(file_name);
+    let new_name = format!(
+        "{}{}.{}",
+        opt.prefix,
+        dt.format("%Y%m%d_%H%M%S").to_string(),
+        ext
+    );
 
-    Ok(new_path)
+    result.push(new_name);
+
+    Ok(result)
 }
 
 async fn parse_file(file_path: PathBuf, opt: &Opt) -> Result<()> {
@@ -74,12 +78,12 @@ async fn parse_file(file_path: PathBuf, opt: &Opt) -> Result<()> {
                 list[0]
             );
 
-            let dt =
-                NaiveDateTime::parse_from_str(&list[0], "%Y-%m-%d %H:%M:%S")?;
-            let new_path =
-                gen_new_path(file_path.as_path(), &dt, opt.rename_only)?;
+            let dt = NaiveDateTime::parse_from_str(&list[0], "%Y-%m-%d %H:%M:%S")?;
+            let new_path = gen_new_path(file_path.as_path(), &dt, opt)?;
 
-            new_path.parent().map(fs::create_dir_all);
+            if !opt.rename_only {
+                new_path.parent().map(fs::create_dir_all);
+            }
 
             fs::rename(file_path, new_path).expect("无法移动文件");
         }
@@ -106,6 +110,7 @@ mod test {
     use chrono::NaiveDateTime;
 
     use super::{gen_new_path, read_datetime, read_dir, read_exif};
+    use crate::opt::Opt;
 
     #[test]
     fn 获取_exif_数据() {
@@ -144,21 +149,25 @@ mod test {
         // let datetime_str = &date_time_fields.unwrap()[0];
         // println!("datetime_str: '{}'", datetime_str);
 
-        let dt = NaiveDateTime::parse_from_str(
-            "2015-11-16 20:07:54",
-            "%Y-%m-%d %H:%M:%S",
-        );
+        let dt = NaiveDateTime::parse_from_str("2015-11-16 20:07:54", "%Y-%m-%d %H:%M:%S");
         println!("dt: {:?}", dt);
         assert!(dt.is_ok());
 
-        let new_path = gen_new_path(file_path, &dt.unwrap(), false);
+        let opt = Opt {
+            rename_only: false,
+            dirs: Vec::new(),
+            prefix: String::new(),
+            videos: false,
+        };
+        let new_path = gen_new_path(file_path, &dt.unwrap(), &opt);
+        
         assert!(new_path.is_ok());
 
         let _new_path = new_path.unwrap();
         let __new_path = _new_path.as_path();
 
         println!("new_path: {:?}", __new_path);
-        assert_eq!(__new_path, Path::new("testdata/201511/1.jpg"));
+        assert_eq!(__new_path, Path::new("testdata/201511/20151116_200754.jpg"));
     }
 
     #[test]
