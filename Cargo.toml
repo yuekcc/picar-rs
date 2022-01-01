@@ -10,8 +10,8 @@ opt-level = 'z'
 
 [dependencies]
 anyhow = "1.0"
-async-std = {version = "1.10", features = ["attributes"]}
 chrono = "0.4"
 futures = "0.3"
 kamadak-exif = "0.5"
 structopt = "0.3.25"
+tokio = { version = "1.15.0", features = ["rt", "rt-multi-thread", "macros"] }

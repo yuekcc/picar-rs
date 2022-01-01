@@ -8,7 +8,7 @@ mod opt;
 use rename::parse_dir;
 use opt::Opt;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> Result<()> {
     let opt = Opt::from_args();
 
