@@ -1,6 +1,6 @@
 [package]
 name = "picar-rs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [profile.release]
@@ -12,6 +12,6 @@ opt-level = 'z'
 anyhow = "1.0"
 chrono = "0.4"
 futures = "0.3"
+gflags = "0.3.10"
 kamadak-exif = "0.5"
-structopt = "0.3.25"
-tokio = { version = "1.15.0", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.15.0", features = ["rt", "macros"] }

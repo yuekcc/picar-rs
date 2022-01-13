@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::opt::Opt;
+use crate::opt::ParserOptions;
 
 fn read_dir(dir: &Path) -> Vec<PathBuf> {
     let entries = dir.read_dir().expect("not a directory");
@@ -38,7 +38,7 @@ fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
     Ok(datetime_fields)
 }
 
-fn gen_new_path(file_path: &Path, dt: &NaiveDateTime, opt: &Opt) -> Result<PathBuf> {
+fn gen_new_path(file_path: &Path, dt: &NaiveDateTime, opt: &ParserOptions) -> Result<PathBuf> {
     let ext = file_path
         .extension()
         .expect("不支持空白拓展名")
@@ -67,7 +67,7 @@ fn gen_new_path(file_path: &Path, dt: &NaiveDateTime, opt: &Opt) -> Result<PathB
     Ok(result)
 }
 
-async fn parse_file(file_path: PathBuf, opt: &Opt) -> Result<()> {
+async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
     let datetime_list = read_datetime(file_path.as_path());
 
     match datetime_list {
@@ -95,22 +95,20 @@ async fn parse_file(file_path: PathBuf, opt: &Opt) -> Result<()> {
     Ok(())
 }
 
-pub async fn parse_dir(dir: &Path, opt: &Opt) {
+pub async fn parse_dir(dir: &Path, opt: &ParserOptions) {
     println!("整理目录：{} 里文件：", dir.display());
 
     let renames = read_dir(dir).into_iter().map(|it| parse_file(it, opt));
-
     future::join_all(renames).await;
 }
 
 #[cfg(test)]
 mod test {
     use std::path::Path;
-
     use chrono::NaiveDateTime;
 
     use super::{gen_new_path, read_datetime, read_dir, read_exif};
-    use crate::opt::Opt;
+    use crate::opt::ParserOptions;
 
     #[test]
     fn 获取_exif_数据() {
@@ -153,7 +151,7 @@ mod test {
         println!("dt: {:?}", dt);
         assert!(dt.is_ok());
 
-        let opt = Opt {
+        let opt = ParserOptions {
             rename_only: false,
             dirs: Vec::new(),
             prefix: String::new(),
