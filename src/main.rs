@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, process};
 
 mod opt;
 mod rename;
@@ -26,12 +26,22 @@ gflags::define! {
     -h, --help = false
 }
 
+gflags::define! {
+    /// 显示版本号
+    -v, --version = false
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let dirs = gflags::parse();
 
     if HELP.flag {
         gflags::print_help_and_exit(0);
+    }
+
+    if VERSION.flag {
+        println!("{}-{}", env!("CARGO_PKG_VERSION"), env!("GIT_HASH"));
+        process::exit(0);
     }
 
     let opt = opt::ParserOptions {
