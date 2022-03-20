@@ -4,9 +4,11 @@ version = "0.2.0"
 edition = "2021"
 
 [profile.release]
-lto = true
 panic = 'abort'
-opt-level = 'z'
+codegen-units = 1
+opt-level = 'z'   # or 'z' to optimize "aggressively" for size
+lto = true
+strip = true
 
 [dependencies]
 anyhow = "1.0"

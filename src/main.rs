@@ -3,7 +3,6 @@ use std::{env, path::PathBuf, process};
 
 mod opt;
 mod rename;
-
 use rename::parse_dir;
 
 gflags::define! {
