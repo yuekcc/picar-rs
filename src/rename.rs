@@ -11,13 +11,13 @@ use crate::opt::ParserOptions;
 
 #[derive(Debug)]
 pub struct DateTimeStyle {
-    // [year]-[month]-[day] [hour]:[minute]:[second]
+    /// EXIF 日期格式：`[year]-[month]-[day] [hour]:[minute]:[second]`
     pub exif: Vec<FormatItem<'static>>,
 
-    // [year][month]
+    /// 归档目录日期格式：`[year][month]`
     pub folder: Vec<FormatItem<'static>>,
 
-    // [year][month][day]_[hour][minute][second]
+    /// 文件名日期格式：`[year][month][day]_[hour][minute][second]`
     pub filename: Vec<FormatItem<'static>>,
 }
 
@@ -148,7 +148,7 @@ mod test {
     use std::path::Path;
     use time::{format_description, PrimitiveDateTime};
 
-    use super::{gen_new_path, read_datetime, read_dir, read_exif};
+    use super::{gen_new_path, read_datetime, read_dir, read_exif, DateTimeStyle};
     use crate::opt::ParserOptions;
 
     #[tokio::test]
@@ -180,6 +180,8 @@ mod test {
 
     #[test]
     fn 从时间日期数据创建新的文件名() {
+        DateTimeStyle::init().expect("无法初始化 DateTimeStyle");
+
         let file_path = Path::new("testdata/1.jpg");
 
         let datetime_format =
