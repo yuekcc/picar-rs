@@ -1,5 +1,7 @@
 use anyhow::Result;
 use std::{env, path::PathBuf, process};
+use tracing::info;
+use tracing_subscriber;
 
 mod opt;
 mod rename;
@@ -32,6 +34,8 @@ gflags::define! {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let dirs = gflags::parse();
 
     if HELP.flag {
@@ -50,11 +54,11 @@ async fn main() -> Result<()> {
         dirs: dirs.iter().map(|s| s.to_string()).collect(),
     };
 
-    println!("-> 文件前缀：{}", opt.prefix);
-    println!("-> 只重命名文件：{}", opt.rename_only);
-    println!("-> 处理视频文件: {}", opt.videos);
-    println!("-> 工作目录：{:?}", opt.dirs);
-    println!("----");
+    info!("-> 文件前缀：{}", opt.prefix);
+    info!("-> 只重命名文件：{}", opt.rename_only);
+    info!("-> 处理视频文件: {}", opt.videos);
+    info!("-> 工作目录：{:?}", opt.dirs);
+    info!("----");
 
     let work_dir = if opt.dirs.is_empty() {
         env::current_dir()?

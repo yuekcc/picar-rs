@@ -6,6 +6,7 @@ use time::{
     PrimitiveDateTime,
 };
 use tokio::fs;
+use tracing::{debug, info, warn};
 
 use crate::opt::ParserOptions;
 
@@ -108,18 +109,16 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> anyhow::Result<(
 
     match datetime_list {
         Ok(list) => {
-            println!(
-                "\t处理文件：{}；获取拍照时间：{}",
-                file_path.display(),
-                list[0]
-            );
+            info!("处理文件：{}；拍照时间：{}", file_path.display(), list[0]);
 
             let dt = PrimitiveDateTime::parse(&list[0], &(DateTimeStyle::global().exif))?;
             let new_path = gen_new_path(file_path.as_path(), &dt, opt)?;
+            debug!("新文件路径 = {}", new_path.as_path().display());
 
             if !opt.rename_only && new_path.parent().is_some() {
                 let parent = new_path.parent().unwrap();
                 if !parent.is_dir() {
+                    debug!("创建归档目录，路径：{}", parent.display());
                     fs::create_dir_all(parent).await?;
                 }
             }
@@ -127,7 +126,7 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> anyhow::Result<(
             fs::rename(file_path, new_path).await.expect("无法移动文件");
         }
         Err(err) => {
-            println!("\t处理文件：{}；出错！{}", file_path.display(), err);
+            warn!("处理文件：{}；出错！{}", file_path.display(), err);
         }
     };
 
@@ -137,10 +136,12 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> anyhow::Result<(
 pub async fn parse_dir(dir: &Path, opt: &ParserOptions) {
     DateTimeStyle::init().expect("无法初始化 DateTimeStyle");
 
-    println!("整理目录：{} ", dir.display());
+    info!("整理目录：{} ", dir.display());
 
     let renames = read_dir(dir).into_iter().map(|it| parse_file(it, opt));
     future::join_all(renames).await;
+
+    info!("完成");
 }
 
 #[cfg(test)]
