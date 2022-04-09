@@ -88,7 +88,9 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
 
             if !opt.rename_only && new_path.parent().is_some() {
                 let parent = new_path.parent().unwrap();
-                fs::create_dir_all(parent).await?;
+                if !parent.is_dir() {
+                    fs::create_dir_all(parent).await?;
+                }
             }
 
             fs::rename(file_path, new_path).await.expect("无法移动文件");
