@@ -20,7 +20,7 @@ IMG_20151106_212111.jpg => 201511/PREFIX_20150401_111111.jpg
 
 ## 构建
 
-**需要 rust 1.59.0**
+**需要 rust 1.59.0+**
 
 ```shell
 $ cargo build --release
