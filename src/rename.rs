@@ -1,10 +1,8 @@
 use anyhow::Result;
-use chrono::NaiveDateTime;
 use futures::future;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+use time::{format_description, PrimitiveDateTime};
+use tokio::fs;
 
 use crate::opt::ParserOptions;
 
@@ -17,8 +15,8 @@ fn read_dir(dir: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-fn read_exif(file_name: &Path) -> Result<exif::Exif> {
-    let file = std::fs::File::open(file_name)?;
+async fn read_exif(file_name: &Path) -> Result<exif::Exif> {
+    let file = fs::File::open(file_name).await?.into_std().await;
     let mut buf_reader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();
 
@@ -26,8 +24,8 @@ fn read_exif(file_name: &Path) -> Result<exif::Exif> {
     Ok(metadata)
 }
 
-fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
-    let exif_data = read_exif(file_name)?;
+async fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
+    let exif_data = read_exif(file_name).await?;
 
     let datetime_fields = exif_data
         .fields()
@@ -38,7 +36,7 @@ fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
     Ok(datetime_fields)
 }
 
-fn gen_new_path(file_path: &Path, dt: &NaiveDateTime, opt: &ParserOptions) -> Result<PathBuf> {
+fn gen_new_path(file_path: &Path, dt: &PrimitiveDateTime, opt: &ParserOptions) -> Result<PathBuf> {
     let ext = file_path
         .extension()
         .expect("不支持空白拓展名")
@@ -51,14 +49,18 @@ fn gen_new_path(file_path: &Path, dt: &NaiveDateTime, opt: &ParserOptions) -> Re
     result.push(basedir);
 
     if !opt.rename_only {
-        let archive_dir = dt.format("%Y%m").to_string();
+        let year_month = format_description::parse("[year][month]")?;
+        let archive_dir = dt.format(&year_month)?;
         result.push(archive_dir);
     }
+
+    let filename_style_format =
+        format_description::parse("[year][month][day]_[hour][minute][second]")?;
 
     let new_name = format!(
         "{}{}.{}",
         opt.prefix,
-        dt.format("%Y%m%d_%H%M%S").to_string(),
+        dt.format(&filename_style_format)?,
         ext
     );
 
@@ -68,7 +70,7 @@ fn gen_new_path(file_path: &Path, dt: &NaiveDateTime, opt: &ParserOptions) -> Re
 }
 
 async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
-    let datetime_list = read_datetime(file_path.as_path());
+    let datetime_list = read_datetime(file_path.as_path()).await;
 
     match datetime_list {
         Ok(list) => {
@@ -78,14 +80,17 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
                 list[0]
             );
 
-            let dt = NaiveDateTime::parse_from_str(&list[0], "%Y-%m-%d %H:%M:%S")?;
+            let datetime_format =
+                format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")?;
+
+            let dt = PrimitiveDateTime::parse(&list[0], &datetime_format)?;
             let new_path = gen_new_path(file_path.as_path(), &dt, opt)?;
 
             if !opt.rename_only {
                 new_path.parent().map(fs::create_dir_all);
             }
 
-            fs::rename(file_path, new_path).expect("无法移动文件");
+            fs::rename(file_path, new_path).await.expect("无法移动文件");
         }
         Err(err) => {
             println!("\t处理文件：{}；出错！{}", file_path.display(), err);
@@ -105,31 +110,31 @@ pub async fn parse_dir(dir: &Path, opt: &ParserOptions) {
 #[cfg(test)]
 mod test {
     use std::path::Path;
-    use chrono::NaiveDateTime;
+    use time::{format_description, PrimitiveDateTime};
 
     use super::{gen_new_path, read_datetime, read_dir, read_exif};
     use crate::opt::ParserOptions;
 
-    #[test]
-    fn 获取_exif_数据() {
+    #[tokio::test]
+    async fn 获取_exif_数据() {
         let file_path = Path::new("testdata/1.jpg");
-        let exif_data = read_exif(file_path);
+        let exif_data = read_exif(file_path).await;
 
         assert!(exif_data.is_ok())
     }
 
-    #[test]
-    fn 获取_exif_数据_非法文件场景() {
+    #[tokio::test]
+    async fn 获取_exif_数据_非法文件场景() {
         let file_path = Path::new("testdata/error_image.jpg");
-        let exif_data = read_exif(file_path);
+        let exif_data = read_exif(file_path).await;
 
         assert!(exif_data.is_err())
     }
 
-    #[test]
-    fn 从文件中获取时间日期数据() {
+    #[tokio::test]
+    async fn 从文件中获取时间日期数据() {
         let file_path = Path::new("testdata/1.jpg");
-        let date_time_fields = read_datetime(file_path);
+        let date_time_fields = read_datetime(file_path).await;
 
         assert!(date_time_fields.is_ok());
 
@@ -146,8 +151,10 @@ mod test {
 
         // let datetime_str = &date_time_fields.unwrap()[0];
         // println!("datetime_str: '{}'", datetime_str);
+        let datetime_format =
+            format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
 
-        let dt = NaiveDateTime::parse_from_str("2015-11-16 20:07:54", "%Y-%m-%d %H:%M:%S");
+        let dt = PrimitiveDateTime::parse("2015-11-16 20:07:54", &datetime_format);
         println!("dt: {:?}", dt);
         assert!(dt.is_ok());
 
@@ -158,7 +165,7 @@ mod test {
             videos: false,
         };
         let new_path = gen_new_path(file_path, &dt.unwrap(), &opt);
-        
+
         assert!(new_path.is_ok());
 
         let _new_path = new_path.unwrap();

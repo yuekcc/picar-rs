@@ -1,6 +1,6 @@
 [package]
 name = "picar-rs"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [profile.release]
@@ -12,8 +12,8 @@ strip = true
 
 [dependencies]
 anyhow = "1.0"
-chrono = "0.4"
+time = { version = "0.3", features = ["std", "parsing", "formatting"] }
 futures = "0.3"
-gflags = "0.3.10"
+gflags = "0.3"
 kamadak-exif = "0.5"
-tokio = { version = "1.15.0", features = ["rt", "macros"] }
+tokio = { version = "1", features = ["rt", "macros", "fs"] }
