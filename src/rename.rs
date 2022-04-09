@@ -91,7 +91,6 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
                 fs::create_dir_all(parent).await?;
             }
 
-            println!("new_path: {:?}", new_path);
             fs::rename(file_path, new_path).await.expect("无法移动文件");
         }
         Err(err) => {
@@ -142,17 +141,12 @@ mod test {
 
         let _date_time_fields = date_time_fields.unwrap();
         assert!(!_date_time_fields.is_empty());
-
-        // println!("date_time_fields is {:?}", _date_time_fields);
     }
 
     #[test]
     fn 从时间日期数据创建新的文件名() {
         let file_path = Path::new("testdata/1.jpg");
-        // let date_time_fields = get_datetime_from_file(file_path);
 
-        // let datetime_str = &date_time_fields.unwrap()[0];
-        // println!("datetime_str: '{}'", datetime_str);
         let datetime_format =
             format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
 
