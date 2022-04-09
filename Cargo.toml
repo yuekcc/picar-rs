@@ -7,7 +7,7 @@ rust-version = "1.59"
 [profile.release]
 panic = 'abort'
 codegen-units = 1
-opt-level = 'z'   # or 'z' to optimize "aggressively" for size
+# opt-level = 'z'
 lto = true
 strip = true
 
