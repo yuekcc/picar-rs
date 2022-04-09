@@ -86,10 +86,12 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
             let dt = PrimitiveDateTime::parse(&list[0], &datetime_format)?;
             let new_path = gen_new_path(file_path.as_path(), &dt, opt)?;
 
-            if !opt.rename_only {
-                new_path.parent().map(fs::create_dir_all);
+            if !opt.rename_only && new_path.parent().is_some() {
+                let parent = new_path.parent().unwrap();
+                fs::create_dir_all(parent).await?;
             }
 
+            println!("new_path: {:?}", new_path);
             fs::rename(file_path, new_path).await.expect("无法移动文件");
         }
         Err(err) => {
@@ -101,7 +103,7 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
 }
 
 pub async fn parse_dir(dir: &Path, opt: &ParserOptions) {
-    println!("整理目录：{} 里文件：", dir.display());
+    println!("整理目录：{} ", dir.display());
 
     let renames = read_dir(dir).into_iter().map(|it| parse_file(it, opt));
     future::join_all(renames).await;
