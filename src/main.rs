@@ -7,7 +7,7 @@ use rename::parse_dir;
 
 gflags::define! {
     /// 文件前缀
-    --prefix: &str
+    --prefix: &str = ""
 }
 
 gflags::define! {
