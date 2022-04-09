@@ -1,10 +1,48 @@
-use anyhow::Result;
 use futures::future;
+use once_cell::sync::OnceCell;
 use std::path::{Path, PathBuf};
-use time::{format_description, PrimitiveDateTime};
+use time::{
+    format_description::{self, FormatItem},
+    PrimitiveDateTime,
+};
 use tokio::fs;
 
 use crate::opt::ParserOptions;
+
+#[derive(Debug)]
+pub struct DateTimeStyle {
+    // [year]-[month]-[day] [hour]:[minute]:[second]
+    pub exif: Vec<FormatItem<'static>>,
+
+    // [year][month]
+    pub folder: Vec<FormatItem<'static>>,
+
+    // [year][month][day]_[hour][minute][second]
+    pub filename: Vec<FormatItem<'static>>,
+}
+
+static DT_STYLE: OnceCell<DateTimeStyle> = OnceCell::new();
+
+impl DateTimeStyle {
+    pub fn global() -> &'static DateTimeStyle {
+        DT_STYLE.get().expect("未初始化")
+    }
+
+    pub fn init() -> anyhow::Result<()> {
+        let exif = format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")?;
+        let folder = format_description::parse("[year][month]")?;
+        let filename = format_description::parse("[year][month][day]_[hour][minute][second]")?;
+
+        let instance = DateTimeStyle {
+            exif,
+            folder,
+            filename,
+        };
+
+        DT_STYLE.set(instance).unwrap();
+        Ok(())
+    }
+}
 
 fn read_dir(dir: &Path) -> Vec<PathBuf> {
     let entries = dir.read_dir().expect("not a directory");
@@ -15,7 +53,7 @@ fn read_dir(dir: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-async fn read_exif(file_name: &Path) -> Result<exif::Exif> {
+async fn read_exif(file_name: &Path) -> anyhow::Result<exif::Exif> {
     let file = fs::File::open(file_name).await?.into_std().await;
     let mut buf_reader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();
@@ -24,7 +62,7 @@ async fn read_exif(file_name: &Path) -> Result<exif::Exif> {
     Ok(metadata)
 }
 
-async fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
+async fn read_datetime(file_name: &Path) -> anyhow::Result<Vec<String>> {
     let exif_data = read_exif(file_name).await?;
 
     let datetime_fields = exif_data
@@ -36,7 +74,11 @@ async fn read_datetime(file_name: &Path) -> Result<Vec<String>> {
     Ok(datetime_fields)
 }
 
-fn gen_new_path(file_path: &Path, dt: &PrimitiveDateTime, opt: &ParserOptions) -> Result<PathBuf> {
+fn gen_new_path(
+    file_path: &Path,
+    dt: &PrimitiveDateTime,
+    opt: &ParserOptions,
+) -> anyhow::Result<PathBuf> {
     let ext = file_path
         .extension()
         .expect("不支持空白拓展名")
@@ -49,27 +91,19 @@ fn gen_new_path(file_path: &Path, dt: &PrimitiveDateTime, opt: &ParserOptions) -
     result.push(basedir);
 
     if !opt.rename_only {
-        let year_month = format_description::parse("[year][month]")?;
-        let archive_dir = dt.format(&year_month)?;
+        let archive_dir = dt.format(&(DateTimeStyle::global().folder))?;
         result.push(archive_dir);
     }
 
-    let filename_style_format =
-        format_description::parse("[year][month][day]_[hour][minute][second]")?;
-
-    let new_name = format!(
-        "{}{}.{}",
-        opt.prefix,
-        dt.format(&filename_style_format)?,
-        ext
-    );
+    let _dt = dt.format(&(DateTimeStyle::global().filename))?;
+    let new_name = format!("{}{}.{}", opt.prefix, _dt, ext);
 
     result.push(new_name);
 
     Ok(result)
 }
 
-async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
+async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> anyhow::Result<()> {
     let datetime_list = read_datetime(file_path.as_path()).await;
 
     match datetime_list {
@@ -80,10 +114,7 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
                 list[0]
             );
 
-            let datetime_format =
-                format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")?;
-
-            let dt = PrimitiveDateTime::parse(&list[0], &datetime_format)?;
+            let dt = PrimitiveDateTime::parse(&list[0], &(DateTimeStyle::global().exif))?;
             let new_path = gen_new_path(file_path.as_path(), &dt, opt)?;
 
             if !opt.rename_only && new_path.parent().is_some() {
@@ -104,6 +135,8 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> Result<()> {
 }
 
 pub async fn parse_dir(dir: &Path, opt: &ParserOptions) {
+    DateTimeStyle::init().expect("无法初始化 DateTimeStyle");
+
     println!("整理目录：{} ", dir.display());
 
     let renames = read_dir(dir).into_iter().map(|it| parse_file(it, opt));
