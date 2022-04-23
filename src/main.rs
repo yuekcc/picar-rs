@@ -8,8 +8,7 @@ mod cli;
 mod rename;
 use crate::{cli::Cli, rename::parse_dir};
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
@@ -26,6 +25,6 @@ async fn main() -> Result<()> {
         PathBuf::from(&cli.dirs[0])
     };
 
-    parse_dir(&work_dir, &cli).await;
+    parse_dir(&work_dir, &cli);
     Ok(())
 }
