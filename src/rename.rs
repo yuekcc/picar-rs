@@ -8,7 +8,7 @@ use time::{
 use tokio::fs;
 use tracing::{debug, info, warn};
 
-use crate::opt::ParserOptions;
+use crate::cli::Cli;
 
 #[derive(Debug)]
 pub struct DateTimeStyle {
@@ -75,11 +75,7 @@ async fn read_datetime(file_name: &Path) -> anyhow::Result<Vec<String>> {
     Ok(datetime_fields)
 }
 
-fn gen_new_path(
-    file_path: &Path,
-    dt: &PrimitiveDateTime,
-    opt: &ParserOptions,
-) -> anyhow::Result<PathBuf> {
+fn gen_new_path(file_path: &Path, dt: &PrimitiveDateTime, opt: &Cli) -> anyhow::Result<PathBuf> {
     let ext = file_path
         .extension()
         .expect("不支持空白拓展名")
@@ -104,7 +100,7 @@ fn gen_new_path(
     Ok(result)
 }
 
-async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> anyhow::Result<()> {
+async fn parse_file(file_path: PathBuf, opt: &Cli) -> anyhow::Result<()> {
     let datetime_list = read_datetime(file_path.as_path()).await;
 
     match datetime_list {
@@ -133,7 +129,7 @@ async fn parse_file(file_path: PathBuf, opt: &ParserOptions) -> anyhow::Result<(
     Ok(())
 }
 
-pub async fn parse_dir(dir: &Path, opt: &ParserOptions) {
+pub(crate) async fn parse_dir(dir: &Path, opt: &Cli) {
     DateTimeStyle::init().expect("无法初始化 DateTimeStyle");
 
     info!("整理目录：{} ", dir.display());
@@ -149,8 +145,8 @@ mod test {
     use std::path::Path;
     use time::{format_description, PrimitiveDateTime};
 
-    use super::{gen_new_path, read_datetime, read_dir, read_exif, DateTimeStyle};
-    use crate::opt::ParserOptions;
+    use super::*;
+    use crate::cli::Cli;
 
     #[tokio::test]
     async fn 获取_exif_数据() {
@@ -192,7 +188,7 @@ mod test {
         println!("dt: {:?}", dt);
         assert!(dt.is_ok());
 
-        let opt = ParserOptions {
+        let opt = Cli {
             rename_only: false,
             dirs: Vec::new(),
             prefix: String::new(),
