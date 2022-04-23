@@ -1,4 +1,3 @@
-use anyhow::Result;
 use clap::Parser;
 use std::{env, path::PathBuf};
 use tracing::info;
@@ -8,23 +7,23 @@ mod cli;
 mod rename;
 use crate::{cli::Cli, rename::parse_dir};
 
-fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
-    info!("-> 文件前缀：{}", cli.prefix);
-    info!("-> 只重命名文件：{}", cli.rename_only);
-    info!("-> 处理视频文件: {}", cli.videos);
-    info!("-> 工作目录：{:?}", cli.dirs);
+    info!("启动参数：{}", cli);
     info!("----");
 
-    let work_dir = if cli.dirs.is_empty() {
-        env::current_dir()?
+    let work_dirs = if cli.dirs.is_empty() {
+        vec![env::current_dir()?]
     } else {
-        PathBuf::from(&cli.dirs[0])
+        cli.dirs.iter().map(PathBuf::from).collect()
     };
 
-    parse_dir(&work_dir, &cli);
+    work_dirs.iter().for_each(|dir| {
+        parse_dir(&dir, &cli);
+    });
+
     Ok(())
 }

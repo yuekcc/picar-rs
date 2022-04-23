@@ -84,8 +84,12 @@ fn gen_new_path(file_path: &Path, dt: &PrimitiveDateTime, opt: &Cli) -> anyhow::
     }
 
     let _dt = dt.format(&(DT_STYLE.filename))?;
-    let new_name = format!("{}{}.{}", opt.prefix, _dt, ext);
+    let _prefix = match opt.prefix {
+        Some(ref prefix) => prefix.clone(),
+        None => String::from(""),
+    };
 
+    let new_name = format!("{}{}.{}", _prefix, _dt, ext);
     result.push(new_name);
 
     Ok(result)
@@ -182,7 +186,7 @@ mod test {
         let opt = Cli {
             rename_only: false,
             dirs: Vec::new(),
-            prefix: String::new(),
+            prefix: None,
             videos: false,
         };
         let new_path = gen_new_path(file_path, &dt.unwrap(), &opt);
