@@ -127,11 +127,8 @@ fn parse_file(file_path: &Path, opt: &Cli) -> anyhow::Result<()> {
 pub(crate) fn parse_dir(dir: &Path, opt: &Cli) {
     info!("整理目录：{} ", dir.display());
 
-    let _ = read_dir(dir).iter().for_each(|it| {
-        let finish = parse_file(it, opt);
-        if finish.is_err() {
-            warn!("处理文件失败，{}", finish.err().unwrap());
-        }
+    read_dir(dir).iter().for_each(|it| {
+        parse_file(it, opt).unwrap_or_else(|err| warn!("处理文件失败，{}", err));
     });
 
     info!("完成");
